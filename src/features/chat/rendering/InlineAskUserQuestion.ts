@@ -324,6 +324,12 @@ export class InlineAskUserQuestion {
         this.isInputFocused = false;
       });
 
+      customRow.addEventListener('click', () => {
+        this.focusedItemIndex = customIdx;
+        this.updateFocusIndicator();
+        inputEl.focus();
+      });
+
       this.currentItems.push(customRow);
     }
 
@@ -482,25 +488,9 @@ export class InlineAskUserQuestion {
         item.addClass('is-focused');
         if (cursor) cursor.textContent = '\u203A';
         item.scrollIntoView({ block: 'nearest' });
-
-        if (item.hasClass('claudian-ask-custom-item')) {
-          const input = item.querySelector('.claudian-ask-custom-text') as HTMLInputElement;
-          if (input) {
-            input.focus();
-            this.isInputFocused = true;
-          }
-        }
       } else {
         item.removeClass('is-focused');
         if (cursor) cursor.textContent = '\u00A0';
-
-        if (item.hasClass('claudian-ask-custom-item')) {
-          const input = item.querySelector('.claudian-ask-custom-text') as HTMLInputElement;
-          if (input && this.rootEl.ownerDocument.activeElement === input) {
-            input.blur();
-            this.isInputFocused = false;
-          }
-        }
       }
     }
   }
@@ -522,6 +512,10 @@ export class InlineAskUserQuestion {
   }
 
   private handleNavigationKey(e: KeyboardEvent, maxFocusIndex: number): boolean {
+    if (this.isInputFocused && e.key !== 'Escape') {
+      (this.rootEl.ownerDocument.activeElement as HTMLElement | null)?.blur();
+      this.isInputFocused = false;
+    }
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
@@ -632,9 +626,8 @@ export class InlineAskUserQuestion {
           this.selectOption(this.activeTabIndex, q.options[this.focusedItemIndex]);
         } else if (this.canShowCustomInputForQuestion(q)) {
           this.isInputFocused = true;
-          const input = this.contentArea.querySelector(
-            '.claudian-ask-custom-text',
-          ) as HTMLInputElement;
+          const customRow = this.currentItems[this.focusedItemIndex];
+          const input = customRow?.querySelector('.claudian-ask-custom-text') as HTMLInputElement;
           input?.focus();
         }
         break;

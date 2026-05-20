@@ -17,6 +17,7 @@ function makeInput(
     options: unknown[];
     multiSelect?: boolean;
     header?: string;
+    isOther?: boolean;
   }>,
 ): Record<string, unknown> {
   return { questions };
@@ -705,6 +706,80 @@ describe('InlineAskUserQuestion', () => {
       expect(submitTab?.hasClass('is-active')).toBe(true);
 
       jest.useRealTimers();
+    });
+
+    it('click on custom row focuses it', () => {
+      const input = makeInput([{ question: 'Q', options: ['A', 'B'], isOther: true }]);
+      const { container } = renderWidget(input);
+
+      const items = findItems(container);
+      const customItem = items.find((i: any) => i.hasClass('claudian-ask-custom-item'));
+      customItem?.click();
+
+      expect(customItem?.hasClass('is-focused')).toBe(true);
+    });
+
+    it('ArrowUp from custom row blurs input focus and moves to option above', () => {
+      const input = makeInput([{ question: 'Q', options: ['A', 'B'], isOther: true }]);
+      const { container } = renderWidget(input);
+      const root = findRoot(container);
+
+      const items = findItems(container);
+      const customItem = items.find((i: any) => i.hasClass('claudian-ask-custom-item'));
+      // Simulate click on custom row (focusedItemIndex = options.length, isInputFocused = true)
+      customItem?.click();
+
+      fireKeyDown(root, 'ArrowUp');
+
+      // Focus should move to the last regular option (index = options.length - 1)
+      const updatedItems = findItems(container);
+      const lastOption = updatedItems.filter(
+        (i: any) => !i.hasClass('claudian-ask-custom-item'),
+      );
+      expect(lastOption[lastOption.length - 1]?.hasClass('is-focused')).toBe(true);
+      expect(customItem?.hasClass('is-focused')).toBe(false);
+    });
+
+    it('Enter on custom item activates input without advancing tab', () => {
+      const input = makeInput([
+        { question: 'Q1', options: ['A'], isOther: true },
+        { question: 'Q2', options: ['B'] },
+      ]);
+      const { container } = renderWidget(input);
+      const root = findRoot(container);
+
+      // Arrow down to custom item
+      fireKeyDown(root, 'ArrowDown'); // Focus on option A (index 0)
+      fireKeyDown(root, 'ArrowDown'); // Focus on custom item (index 1)
+
+      // Press Enter — should activate input, NOT advance tab
+      fireKeyDown(root, 'Enter');
+
+      // Should still be on Q1 tab
+      const tabs = container.querySelectorAll('claudian-ask-tab');
+      expect(tabs[0]?.hasClass('is-active')).toBe(true);
+    });
+
+    it('Enter on custom item then Enter again advances to next tab', () => {
+      const input = makeInput([
+        { question: 'Q1', options: ['A'], isOther: true },
+        { question: 'Q2', options: ['B'] },
+      ]);
+      const { container } = renderWidget(input);
+      const root = findRoot(container);
+
+      // Arrow down to custom item
+      fireKeyDown(root, 'ArrowDown');
+      fireKeyDown(root, 'ArrowDown');
+
+      // First Enter activates input
+      fireKeyDown(root, 'Enter');
+      // Second Enter advances
+      fireKeyDown(root, 'Enter');
+
+      // Should be on Q2 tab now
+      const tabs = container.querySelectorAll('claudian-ask-tab');
+      expect(tabs[1]?.hasClass('is-active')).toBe(true);
     });
   });
 });
